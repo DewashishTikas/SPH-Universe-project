@@ -3,7 +3,6 @@ import multerUpload from "../services/multer.js";
 
 export const uploadFiles = (fieldNames) => {
     try {
-        console.log(fieldNames, typeof(fieldNames));
         let upload = multerUpload.none();
         if(Array.isArray(fieldNames)){
             const fields = fieldNames.map((fieldName)=>{
@@ -30,7 +29,7 @@ export const uploadFiles = (fieldNames) => {
         }
     }
     catch (err) {
-        console.log(err);
+        console.error(err);
         return res.status(500).json({error: "Failed to save uploaded files. Please try agian later!!"});
     }
 }

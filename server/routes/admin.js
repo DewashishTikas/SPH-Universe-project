@@ -3,8 +3,8 @@ import jwt from "jsonwebtoken";
 import VacancyModel from "../models/vacancy.js";
 import ProfileModel from "../models/profile.js";
 import FileModel from "../models/file.js";
+import { megaStorage, deleteFileById } from "../services/megaStorageEngine.js";
 import ApplicationsModel from "../models/applications.js";
-import mongoose from "mongoose";
 
 const router = express.Router({ mergeParams: true });
 
@@ -43,23 +43,22 @@ router.get("/signout", (req, res) => {
 router.post('/vacancy', async (req, res) => {
     try {
         const { post } = req.body;
-        console.log(post);
         const newVacany = new VacancyModel({ name: post });
         await newVacany.save();
         return res.status(200).json({ message: "Vacancy is added successfully!!" });
     }
     catch (err) {
-        console.log(err);
+        console.error(err);
         return res.status(500).json({ error: "Failed to save vacancy, please try it again later!!" });
     }
 });
 
 router.delete('/vacancy', async (req, res) => {
     try {
-        console.log(req.body);
         const { vacancyId } = req.body;
         if (vacancyId) {
             await VacancyModel.deleteOne({ _id: vacancyId });
+            console.log(`Vacancy with id:${vacancyId} is deleted successfully`);
             return res.status(200).json({ message: "Post is deleted successfully!!" });
         }
         else {
@@ -67,7 +66,7 @@ router.delete('/vacancy', async (req, res) => {
         }
     }
     catch (err) {
-        console.log(err);
+        console.error(err);
         return res.status(500).json({ error: "Failed to delete the post. Please try again later!!" });
     }
 });
@@ -87,8 +86,13 @@ router.delete("/profile", async (req, res) => {
     try {
         const { id } = req.body;
         const { resumeId } = await ProfileModel.findById(id);
-        await FileModel.findByIdAndDelete(resumeId);
+        const isFileDeleted = await deleteFileById(resumeId);
+        if(!isFileDeleted){
+            console.log(`Failed to delete resume file of Profile with id:${id}`);
+            return res.status(500).json({error: "Failed to delete File!!"});
+        }
         await ProfileModel.findByIdAndDelete(id);
+        console.log(`Profile with id:${id} is deleted successfully`);
         res.status(200).json({ message: "Delete user profile successfully!!" });
     }
     catch (err) {
@@ -112,8 +116,20 @@ router.delete("/applications", async (req, res) => {
     try {
         const { id } = req.body;
         const { photoId, resumeId, marksheetId, signatureId } = await ApplicationsModel.findById(id);
-        await FileModel.deleteMany({ _id: [photoId, resumeId, marksheetId, signatureId] });
+        const isAllFileDeleted = await [photoId, resumeId, marksheetId, signatureId]
+            .map((id) => async (preStatus) => {
+                const isDeleted = await deleteFileById(id);
+                return isDeleted && preStatus;
+            })
+            .reduce(async (acc, fn)=>{
+                return acc.then(fn);
+        }, Promise.resolve(true));
+        if(!isAllFileDeleted){
+            console.log(`Failed to delete some files of Application with id:${id}!!`);
+            return res.status(500).json({error: "Failed to delete some files!!"});
+        } 
         await ApplicationsModel.findByIdAndDelete(id);
+        console.log(`Application with id:${id} is deleted successfully!!`);
         res.status(200).json({ message: "Applications is deleted successfully!!" });
     }
     catch (err) {
@@ -125,24 +141,20 @@ router.delete("/applications", async (req, res) => {
 router.get("/file/:id", async (req, res) => {
     try {
         const fileId = req.params.id;
-        const readStream = FileModel.findById(fileId).cursor({
-            transform: (doc) => {
-                return doc.bufferData;
-            }
-        });
-        readStream.on("data", (doc) => {
-            console.log(doc.id);
-        });
+        const { nodeId } = await FileModel.findById(fileId, "nodeId");
+        const targetFile = megaStorage.navigate("uploads").find(file => file.nodeId == nodeId);
+        if(!targetFile) return res.status(400).json({error: "File not found!!"});
+        const readStream = targetFile.download();
         readStream.on("error", async (err) => {
-            console.log(err);
-            await readStream.close();
+            console.error(err);
+            // await readStream.close();
             return res.status(500).json({ error: "Failed to server requested file!!" });
         });
         readStream.pipe(res);
-}
+    }
     catch (err) {
-    console.log(err);
-    return res.status(500).json({ error: "Failed to server requested file!!" });
-}
+        console.error(err);
+        return res.status(500).json({ error: "Failed to server requested file!!" });
+    }
 });
 export default router;

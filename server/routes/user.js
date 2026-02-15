@@ -20,7 +20,7 @@ router.get('/vacancy', async (req, res) => {
         return res.status(200).json({ data: vacancies });
     }
     catch (err) {
-        console.log(err);
+        console.error(err);
         return res.status(500).json({ error: "Failed to load all vacancies!!" });
     }
 });
@@ -28,13 +28,12 @@ router.get('/vacancy', async (req, res) => {
 router.post('/contact', async (req, res) => {
     try {
         const data = req.body;
-        console.log(data);
         const newContact = new ContactModel(data);
         await newContact.save();
         return res.status(200).json({ message: "We will contact you soon !!" });
     }
     catch (err) {
-        console.log(err);
+        console.error(err);
         res.status(500).json({ error: "Failed to save your contact details. Please try again" })
     }
 });
@@ -43,7 +42,6 @@ router.post('/applications', uploadFiles(["Signature", "Photo", "Resume", "Attac
     try {
         const formData = req.body;
         const files = req.files;
-        console.log(req.files);
         const data = {
             name: formData["Name"],
             fatherName: formData["Father's Name"],
@@ -66,11 +64,10 @@ router.post('/applications', uploadFiles(["Signature", "Photo", "Resume", "Attac
         }
         const newApplication = new ApplyModel(data);
         await newApplication.save();
-        console.log(data);
         return res.status(200).json({ message: "Your application is saved successfully!!" });
     }
     catch (err) {
-        console.log(err);
+        console.error(err);
         return res.status(500).json({ error: "Failed to save your application. Please try again later!!" });
     }
 });
@@ -84,13 +81,14 @@ router.post("/profile", uploadFiles("Resume"), async (req, res) => {
             email: formData["Email"],
             linkedInUrl: formData["LinkedIn URL"],
             resumeId: file.id,
+            phoneNo: formData["phoneNo"]
         }
         const newProfile = new ProfileModel(data);
         await newProfile.save();
         return res.status(200).json({message: "Your profile is saved successfully!!"});
     }
     catch (err) {
-        console.log(err);
+        console.error(err);
         return res.status(500).json({error: "Failed to save profile info. Please try again!!"});
     }
 });

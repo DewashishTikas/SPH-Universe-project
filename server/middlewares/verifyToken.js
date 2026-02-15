@@ -2,7 +2,6 @@ import jwt from "jsonwebtoken";
 
 export const verifyAdminToken = (req, res, next) => {
     try {
-        console.log(req.path);
         if(req.path == "/login") return next();
 
         const { sessionToken } = req.cookies;
@@ -15,7 +14,7 @@ export const verifyAdminToken = (req, res, next) => {
         return res.status(400).json({message: "Unauthorized Request !!"});
     }
     catch (err) {
-        console.log(err);
+        console.error(err);
         res.status(500).json({error: "Some thing went wrong. Please try agian later !!"});
     }
 }

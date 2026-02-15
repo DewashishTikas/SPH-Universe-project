@@ -5,6 +5,7 @@ import cookieParser from "cookie-parser";
 import { verifyAdminToken } from "./middlewares/verifyToken.js";
 import adminRouter from "./routes/admin.js";
 import userRouter from "./routes/user.js";
+import { logger } from "./middlewares/logger.js";
 import { connectMongoServer } from "./database/config.js";
 
 
@@ -30,6 +31,7 @@ const corsOptions = {
 app.use(cors(corsOptions));
 app.use(cookieParser());
 app.use(express.json());
+app.use(logger());
 app.use('/user', userRouter);
 app.use('/admin', verifyAdminToken, adminRouter);
 
